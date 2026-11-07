@@ -51,21 +51,32 @@ RULES = (
 )
 
 
-def main_menu():
+# MAIN MENU
+
+def main_menu(bot_username):
     return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "➕ Add me to a group",
+                url=f"https://t.me/{bot_username}?startgroup=true"
+            )
+        ],
         [
             InlineKeyboardButton("👥 Group", callback_data="group"),
             InlineKeyboardButton("📢 Channel", callback_data="channel")
         ],
         [
             InlineKeyboardButton("🆘 Support", callback_data="support"),
-            InlineKeyboardButton("💬 Information", callback_data="info")
+            InlineKeyboardButton("ℹ️ Information", callback_data="info")
         ],
         [
-            InlineKeyboardButton("🌍 Languages", callback_data="languages")
+            InlineKeyboardButton("🌍 Languages", callback_data="languages"),
+            InlineKeyboardButton("🔒 Privacy Policy", callback_data="privacy")
         ]
     ])
 
+
+# ADMIN DASHBOARD
 
 def admin_keyboard(chat_id):
     s = settings[chat_id]
@@ -83,8 +94,14 @@ def admin_keyboard(chat_id):
         [switch("badwords", "🚫 Bad Words")],
         [switch("warnings", "⚠️ Auto-Warnings")],
         [
-            InlineKeyboardButton("📜 View Rules", callback_data="rules"),
-            InlineKeyboardButton("🏠 Main Menu", callback_data="home")
+            InlineKeyboardButton(
+                "📜 View Rules",
+                callback_data="rules"
+            ),
+            InlineKeyboardButton(
+                "🏠 Main Menu",
+                callback_data="home"
+            )
         ]
     ])
 
@@ -97,29 +114,49 @@ async def is_admin(update, context):
     return member.status in ("administrator", "creator")
 
 
+# START COMMAND
+
 async def start(update, context):
+    bot_info = await context.bot.get_me()
+
     await update.message.reply_text(
-        "👋 Welcome to Asemooh Service Bot!\n\n"
-        "Your assistant for safer Telegram groups.\n\n"
-        "Add me to your group and make me an administrator.",
-        reply_markup=main_menu()
+        "👋 Hello!\n\n"
+        "🤖 Welcome to Asemooh Service Bot!\n\n"
+        "I am your assistant for managing Telegram groups "
+        "easily and safely.\n\n"
+        "👉 Add me to your group and promote me as an "
+        "administrator to activate my moderation features.\n\n"
+        "❓ WHICH ARE THE COMMANDS?\n"
+        "Press /help to see all available commands.",
+        reply_markup=main_menu(bot_info.username)
     )
 
+
+# HELP COMMAND
 
 async def help_command(update, context):
     await update.message.reply_text(
         "🤖 ASEMOOH SERVICE BOT\n\n"
-        "/start - Main menu\n"
-        "/help - Help\n"
-        "/admin - Administrator dashboard\n"
-        "/rules - Group rules\n"
-        "/ban - Ban replied-to member\n"
-        "/unban - Unban replied-to member\n"
-        "/mute - Mute replied-to member\n"
-        "/unmute - Unmute replied-to member\n"
-        "/warn - Warn replied-to member"
+        "📌 GENERAL COMMANDS\n"
+        "/start - Open main menu\n"
+        "/help - Show available commands\n"
+        "/rules - View group rules\n\n"
+        "⚙️ ADMIN COMMANDS\n"
+        "/admin - Open administrator dashboard\n"
+        "/ban - Ban a replied-to member\n"
+        "/unban - Unban a replied-to member\n"
+        "/mute - Mute a replied-to member\n"
+        "/unmute - Unmute a replied-to member\n"
+        "/warn - Give a warning to a replied-to member\n\n"
+        "📢 IMPORTANT\n"
+        "Most moderation commands must be used inside "
+        "a group by an administrator.\n\n"
+        "Reply to a member's message before using "
+        "ban, unban, mute, unmute or warn."
     )
 
+
+# ADMIN PANEL
 
 async def admin_panel(update, context):
     if update.effective_chat.type == "private":
@@ -141,16 +178,20 @@ async def admin_panel(update, context):
     )
 
 
+# BUTTON CALLBACKS
+
 async def callbacks(update, context):
     query = update.callback_query
+    data = query.data
+
     await query.answer()
 
-    data = query.data
     chat_id = query.message.chat.id
 
     if data.startswith("toggle:"):
         member = await context.bot.get_chat_member(
-            chat_id, query.from_user.id
+            chat_id,
+            query.from_user.id
         )
 
         if member.status not in ("administrator", "creator"):
@@ -186,7 +227,8 @@ async def callbacks(update, context):
 
     if data == "admin":
         member = await context.bot.get_chat_member(
-            chat_id, query.from_user.id
+            chat_id,
+            query.from_user.id
         )
 
         if member.status not in ("administrator", "creator"):
@@ -202,21 +244,79 @@ async def callbacks(update, context):
         )
         return
 
+    if data == "home":
+        bot_info = await context.bot.get_me()
+
+        await query.edit_message_text(
+            "👋 Hello!\n\n"
+            "🤖 Welcome to Asemooh Service Bot!\n\n"
+            "Your assistant for safer Telegram groups.",
+            reply_markup=main_menu(bot_info.username)
+        )
+        return
+
     pages = {
-        "group": "👥 Group management\n\nUse /admin inside your group.",
-        "channel": "📢 Channel management\n\nChannel features can be configured separately.",
-        "support": "🆘 Contact your bot administrator for support.",
-        "info": "💬 Asemooh Service Bot helps manage Telegram groups.",
-        "languages": "🌍 English is currently available."
+        "group": (
+            "👥 GROUP MANAGEMENT\n\n"
+            "Asemooh Service Bot helps protect and manage "
+            "your Telegram group.\n\n"
+            "Add the bot to your group and promote it "
+            "as an administrator.\n\n"
+            "Use /admin inside your group to open "
+            "the moderation dashboard."
+        ),
+
+        "channel": (
+            "📢 CHANNEL INFORMATION\n\n"
+            "Asemooh Service Bot can be added to a Telegram "
+            "channel as an administrator.\n\n"
+            "Channel management features can be configured "
+            "separately."
+        ),
+
+        "support": (
+            "🆘 SUPPORT\n\n"
+            "Thank you for using Asemooh Service Bot!\n\n"
+            "For assistance, contact the bot owner "
+            "through the administrator of this bot."
+        ),
+
+        "info": (
+            "ℹ️ ABOUT ASEMOOH SERVICE BOT\n\n"
+            "Asemooh Service Bot is designed to help "
+            "Telegram group administrators manage "
+            "their communities.\n\n"
+            "Features include:\n"
+            "✅ Welcome messages\n"
+            "✅ Link protection\n"
+            "✅ Anti-flood protection\n"
+            "✅ Warning system\n"
+            "✅ Member moderation\n"
+            "✅ Administrator dashboard"
+        ),
+
+        "languages": (
+            "🌍 LANGUAGE SETTINGS\n\n"
+            "English is currently the available language.\n\n"
+            "More languages can be added in future updates."
+        ),
+
+        "privacy": (
+            "🔒 PRIVACY POLICY\n\n"
+            "Asemooh Service Bot processes Telegram messages "
+            "to provide its moderation features.\n\n"
+            "The bot may process user IDs, group IDs and "
+            "message content for moderation purposes.\n\n"
+            "Moderation settings, warning counts and "
+            "anti-flood history are stored temporarily "
+            "in memory while the bot is running.\n\n"
+            "This information may reset when the bot restarts.\n\n"
+            "Do not send passwords, financial details or "
+            "other sensitive personal information to the bot."
+        )
     }
 
-    if data == "home":
-        await query.edit_message_text(
-            "👋 Welcome to Asemooh Service Bot!",
-            reply_markup=main_menu()
-        )
-
-    elif data in pages:
+    if data in pages:
         await query.edit_message_text(
             pages[data],
             reply_markup=InlineKeyboardMarkup([[
@@ -228,9 +328,13 @@ async def callbacks(update, context):
         )
 
 
+# RULES COMMAND
+
 async def rules_command(update, context):
     await update.message.reply_text(RULES)
 
+
+# WELCOME MESSAGES
 
 async def welcome(update, context):
     chat_id = update.effective_chat.id
@@ -248,6 +352,8 @@ async def welcome(update, context):
             )
 
 
+# AUTOMATIC MODERATION
+
 async def moderate(update, context):
     message = update.effective_message
     chat = update.effective_chat
@@ -260,7 +366,8 @@ async def moderate(update, context):
         return
 
     member = await context.bot.get_chat_member(
-        chat.id, user.id
+        chat.id,
+        user.id
     )
 
     if member.status in ("administrator", "creator"):
@@ -269,9 +376,11 @@ async def moderate(update, context):
     s = settings[chat.id]
     text = message.text.lower()
 
-    # Link protection
+    # LINK PROTECTION
+
     if s["links"] and re.search(
-        r"(https?://|www\.|t\.me/)", text
+        r"(https?://|www\.|t\.me/)",
+        text
     ):
         try:
             await message.delete()
@@ -279,7 +388,8 @@ async def moderate(update, context):
             logging.exception("Link deletion failed")
         return
 
-    # Bad words protection
+    # BAD WORDS PROTECTION
+
     if s["badwords"] and any(
         word in text for word in BAD_WORDS
     ):
@@ -289,7 +399,8 @@ async def moderate(update, context):
             logging.exception("Bad word deletion failed")
         return
 
-    # Anti-flood protection
+    # ANTI-FLOOD PROTECTION
+
     if s["antispam"]:
         key = (chat.id, user.id)
         now = time.time()
@@ -315,6 +426,8 @@ async def moderate(update, context):
             flood[key].clear()
 
 
+# ADMIN COMMAND CHECK
+
 async def admin_command(update, context):
     if update.effective_chat.type == "private":
         await update.message.reply_text(
@@ -337,6 +450,8 @@ async def admin_command(update, context):
     return True
 
 
+# BAN COMMAND
+
 async def ban(update, context):
     if not await admin_command(update, context):
         return
@@ -344,13 +459,16 @@ async def ban(update, context):
     user = update.message.reply_to_message.from_user
 
     await context.bot.ban_chat_member(
-        update.effective_chat.id, user.id
+        update.effective_chat.id,
+        user.id
     )
 
     await update.message.reply_text(
         f"🔨 {user.first_name} has been banned."
     )
 
+
+# UNBAN COMMAND
 
 async def unban(update, context):
     if not await admin_command(update, context):
@@ -359,13 +477,16 @@ async def unban(update, context):
     user = update.message.reply_to_message.from_user
 
     await context.bot.unban_chat_member(
-        update.effective_chat.id, user.id
+        update.effective_chat.id,
+        user.id
     )
 
     await update.message.reply_text(
         f"✅ {user.first_name} has been unbanned."
     )
 
+
+# MUTE COMMAND
 
 async def mute(update, context):
     if not await admin_command(update, context):
@@ -385,6 +506,8 @@ async def mute(update, context):
         f"🔇 {user.first_name} has been muted."
     )
 
+
+# UNMUTE COMMAND
 
 async def unmute(update, context):
     if not await admin_command(update, context):
@@ -414,6 +537,8 @@ async def unmute(update, context):
     )
 
 
+# WARN COMMAND
+
 async def warn(update, context):
     if not await admin_command(update, context):
         return
@@ -426,13 +551,15 @@ async def warn(update, context):
 
     if count >= 3:
         await context.bot.ban_chat_member(
-            update.effective_chat.id, user.id
+            update.effective_chat.id,
+            user.id
         )
 
         warnings[key] = 0
 
         await update.message.reply_text(
-            f"🚫 {user.first_name} received 3 warnings and was banned."
+            f"🚫 {user.first_name} received "
+            "3 warnings and was banned."
         )
 
     else:
@@ -440,6 +567,8 @@ async def warn(update, context):
             f"⚠️ Warning {count}/3 for {user.first_name}."
         )
 
+
+# START BOT
 
 def main():
     if not TOKEN:
@@ -457,11 +586,14 @@ def main():
         CommandHandler("mute", mute),
         CommandHandler("unmute", unmute),
         CommandHandler("warn", warn),
+
         CallbackQueryHandler(callbacks),
+
         MessageHandler(
             filters.StatusUpdate.NEW_CHAT_MEMBERS,
             welcome
         ),
+
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             moderate
