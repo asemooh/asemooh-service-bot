@@ -5,14 +5,27 @@ import logging
 import time
 from collections import defaultdict, deque
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ChatPermissions
+)
 from telegram.ext import (
-    Application, CommandHandler, MessageHandler,
-    CallbackQueryHandler, ContextTypes, filters
+    Application,
+    CommandHandler,
+    MessageHandler,
+    CallbackQueryHandler,
+    ContextTypes,
+    filters
 )
 
 TOKEN = os.getenv("BOT_TOKEN")
-logging.basicConfig(level=logging.INFO)
+
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    level=logging.INFO
+)
 
 DEFAULTS = {
     "welcome": True,
@@ -48,7 +61,9 @@ def main_menu():
             InlineKeyboardButton("🆘 Support", callback_data="support"),
             InlineKeyboardButton("💬 Information", callback_data="info")
         ],
-        [InlineKeyboardButton("🌍 Languages", callback_data="languages")]
+        [
+            InlineKeyboardButton("🌍 Languages", callback_data="languages")
+        ]
     ])
 
 
@@ -102,7 +117,7 @@ async def help_command(update, context):
         "/unban - Unban replied-to member\n"
         "/mute - Mute replied-to member\n"
         "/unmute - Unmute replied-to member\n"
-        "/warn - Warn replied-to member\n"
+        "/warn - Warn replied-to member"
     )
 
 
@@ -140,7 +155,8 @@ async def callbacks(update, context):
 
         if member.status not in ("administrator", "creator"):
             await query.answer(
-                "Administrators only!", show_alert=True
+                "Administrators only!",
+                show_alert=True
             )
             return
 
@@ -161,7 +177,8 @@ async def callbacks(update, context):
             RULES,
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton(
-                    "⬅️ Admin Panel", callback_data="admin"
+                    "⬅️ Admin Panel",
+                    callback_data="admin"
                 )
             ]])
         )
@@ -171,9 +188,11 @@ async def callbacks(update, context):
         member = await context.bot.get_chat_member(
             chat_id, query.from_user.id
         )
+
         if member.status not in ("administrator", "creator"):
             await query.answer(
-                "Administrators only!", show_alert=True
+                "Administrators only!",
+                show_alert=True
             )
             return
 
@@ -196,12 +215,14 @@ async def callbacks(update, context):
             "👋 Welcome to Asemooh Service Bot!",
             reply_markup=main_menu()
         )
+
     elif data in pages:
         await query.edit_message_text(
             pages[data],
             reply_markup=InlineKeyboardMarkup([[
                 InlineKeyboardButton(
-                    "⬅️ Main Menu", callback_data="home"
+                    "⬅️ Main Menu",
+                    callback_data="home"
                 )
             ]])
         )
@@ -238,7 +259,9 @@ async def moderate(update, context):
     if chat.type == "private":
         return
 
-    member = await context.bot.get_chat_member(chat.id, user.id)
+    member = await context.bot.get_chat_member(
+        chat.id, user.id
+    )
 
     if member.status in ("administrator", "creator"):
         return
@@ -246,6 +269,7 @@ async def moderate(update, context):
     s = settings[chat.id]
     text = message.text.lower()
 
+    # Link protection
     if s["links"] and re.search(
         r"(https?://|www\.|t\.me/)", text
     ):
@@ -255,6 +279,7 @@ async def moderate(update, context):
             logging.exception("Link deletion failed")
         return
 
+    # Bad words protection
     if s["badwords"] and any(
         word in text for word in BAD_WORDS
     ):
@@ -264,23 +289,29 @@ async def moderate(update, context):
             logging.exception("Bad word deletion failed")
         return
 
+    # Anti-flood protection
     if s["antispam"]:
         key = (chat.id, user.id)
         now = time.time()
+
         flood[key].append(now)
 
         while flood[key] and now - flood[key][0] > 8:
             flood[key].popleft()
 
-                if len(flood[key]) >= 6:
+        if len(flood[key]) >= 6:
             try:
                 await message.delete()
+
                 await context.bot.send_message(
                     chat.id,
-                    f"⚠️ {user.first_name}, please stop flooding the group!"
+                    f"⚠️ {user.first_name}, "
+                    "please stop flooding the group!"
                 )
+
             except Exception:
                 logging.exception("Flood protection failed")
+
             flood[key].clear()
 
 
@@ -311,9 +342,11 @@ async def ban(update, context):
         return
 
     user = update.message.reply_to_message.from_user
+
     await context.bot.ban_chat_member(
         update.effective_chat.id, user.id
     )
+
     await update.message.reply_text(
         f"🔨 {user.first_name} has been banned."
     )
@@ -324,9 +357,11 @@ async def unban(update, context):
         return
 
     user = update.message.reply_to_message.from_user
+
     await context.bot.unban_chat_member(
         update.effective_chat.id, user.id
     )
+
     await update.message.reply_text(
         f"✅ {user.first_name} has been unbanned."
     )
@@ -337,6 +372,7 @@ async def mute(update, context):
         return
 
     user = update.message.reply_to_message.from_user
+
     await context.bot.restrict_chat_member(
         update.effective_chat.id,
         user.id,
@@ -344,6 +380,7 @@ async def mute(update, context):
             can_send_messages=False
         )
     )
+
     await update.message.reply_text(
         f"🔇 {user.first_name} has been muted."
     )
@@ -354,6 +391,7 @@ async def unmute(update, context):
         return
 
     user = update.message.reply_to_message.from_user
+
     await context.bot.restrict_chat_member(
         update.effective_chat.id,
         user.id,
@@ -370,6 +408,7 @@ async def unmute(update, context):
             can_add_web_page_previews=True
         )
     )
+
     await update.message.reply_text(
         f"🔊 {user.first_name} has been unmuted."
     )
@@ -381,18 +420,21 @@ async def warn(update, context):
 
     user = update.message.reply_to_message.from_user
     key = (update.effective_chat.id, user.id)
-    warnings[key] += 1
 
+    warnings[key] += 1
     count = warnings[key]
 
     if count >= 3:
         await context.bot.ban_chat_member(
             update.effective_chat.id, user.id
         )
+
         warnings[key] = 0
+
         await update.message.reply_text(
             f"🚫 {user.first_name} received 3 warnings and was banned."
         )
+
     else:
         await update.message.reply_text(
             f"⚠️ Warning {count}/3 for {user.first_name}."
@@ -417,10 +459,12 @@ def main():
         CommandHandler("warn", warn),
         CallbackQueryHandler(callbacks),
         MessageHandler(
-            filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome
+            filters.StatusUpdate.NEW_CHAT_MEMBERS,
+            welcome
         ),
         MessageHandler(
-            filters.TEXT & ~filters.COMMAND, moderate
+            filters.TEXT & ~filters.COMMAND,
+            moderate
         )
     ]
 
@@ -428,9 +472,9 @@ def main():
         app.add_handler(handler)
 
     logging.info("Asemooh Service Bot is starting...")
+
     app.run_polling()
 
 
 if __name__ == "__main__":
     main()
-
