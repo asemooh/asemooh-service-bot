@@ -272,16 +272,16 @@ async def moderate(update, context):
         while flood[key] and now - flood[key][0] > 8:
             flood[key].popleft()
 
-        if len(flood[key]) >= 6:
-    try:
-        await message.delete()
-        await context.bot.send_message(
-            chat.id,
-            f"⚠️ {user.first_name}, please stop flooding the group!"
-        )
-    except Exception:
-        logging.exception("Flood protection failed")
-    flood[key].clear()
+                if len(flood[key]) >= 6:
+            try:
+                await message.delete()
+                await context.bot.send_message(
+                    chat.id,
+                    f"⚠️ {user.first_name}, please stop flooding the group!"
+                )
+            except Exception:
+                logging.exception("Flood protection failed")
+            flood[key].clear()
 
 
 async def admin_command(update, context):
