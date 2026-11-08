@@ -16,6 +16,7 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     CallbackQueryHandler,
+    ChatJoinRequestHandler,
     ContextTypes,
     filters
 )
@@ -184,8 +185,6 @@ async def callbacks(update, context):
     query = update.callback_query
     data = query.data
 
-    await query.answer()
-
     chat_id = query.message.chat.id
 
     if data.startswith("toggle:"):
@@ -204,14 +203,18 @@ async def callbacks(update, context):
         name = data.split(":", 1)[1]
 
         if name not in DEFAULTS:
+            await query.answer()
             return
 
         settings[chat_id][name] = not settings[chat_id][name]
 
+        await query.answer("Setting updated.")
         await query.edit_message_reply_markup(
             reply_markup=admin_keyboard(chat_id)
         )
         return
+
+    await query.answer()
 
     if data == "rules":
         await query.edit_message_text(
@@ -292,7 +295,8 @@ async def callbacks(update, context):
             "✅ Anti-flood protection\n"
             "✅ Warning system\n"
             "✅ Member moderation\n"
-            "✅ Administrator dashboard"
+            "✅ Administrator dashboard\n"
+            "✅ Automatic join-request approval"
         ),
 
         "languages": (
@@ -332,6 +336,37 @@ async def callbacks(update, context):
 
 async def rules_command(update, context):
     await update.message.reply_text(RULES)
+
+
+# AUTOMATIC JOIN-REQUEST APPROVAL
+
+async def approve_join_request(update, context):
+    request = update.chat_join_request
+
+    if not request:
+        return
+
+    chat_id = request.chat.id
+    user_id = request.from_user.id
+
+    try:
+        await context.bot.approve_chat_join_request(
+            chat_id=chat_id,
+            user_id=user_id
+        )
+
+        logging.info(
+            "Approved join request from user %s in group %s",
+            user_id,
+            chat_id
+        )
+
+    except Exception:
+        logging.exception(
+            "Could not approve join request from user %s in group %s",
+            user_id,
+            chat_id
+        )
 
 
 # WELCOME MESSAGES
@@ -587,6 +622,8 @@ def main():
         CommandHandler("unmute", unmute),
         CommandHandler("warn", warn),
 
+        ChatJoinRequestHandler(approve_join_request),
+
         CallbackQueryHandler(callbacks),
 
         MessageHandler(
@@ -605,7 +642,7 @@ def main():
 
     logging.info("Asemooh Service Bot is starting...")
 
-    app.run_polling()
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
